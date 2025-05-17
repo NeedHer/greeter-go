@@ -1,4 +1,4 @@
-package goodbye
+package farewell
 
 import "fmt"
 
