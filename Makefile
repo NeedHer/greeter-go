@@ -21,16 +21,14 @@ VERSION_MINOR := 0
 VERSION_PATCH := 0
 VERSION       := $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)
 
-PKG_DIRS    := $(shell find . -type f -name "*.go" -exec dirname {} \; | sed 's|^\./||' | sort -u)
-PKG_OBJS    := $(addprefix $(OBJ_DIR)/$(LIB_NAME)/, $(addsuffix .o, $(PKG_DIRS)))
-PKG_GOX 	  := $(addprefix $(GOX_DIR)/$(LIB_NAME)/, $(addsuffix .gox, $(PKG_DIRS)))
-PKG_GO_SRCS  = $(filter-out %_test.go, $(wildcard $(patsubst $(OBJ_DIR)/$(LIB_NAME)/%.o,%,$@)/*.go))
+PKG_DIRS  := $(shell find . -type f -name "*.go" -exec dirname {} \; | sort -ur)
+PKG_NAMES := $(subst .,$(LIB_NAME), $(PKG_DIRS))
+PKG_OBJS  := $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(PKG_NAMES)))
+PKG_GOXS  := $(addprefix $(GOX_DIR)/, $(addsuffix .gox, $(PKG_NAMES)))
 
-pkg-dirs:
-	@echo $(PKG_DIRS)
-	@echo $(PKG_OBJS)
-	@echo $(PKG_GOX)
-	
+PKG_GO_DIR  = $(if $(filter $(LIB_NAME),$*),.,$(patsubst $(LIB_NAME)/%,%,$*))
+PKG_GO_SRCS = $(filter-out %_test.go, $(wildcard $(PKG_GO_DIR)/*.go))
+
 EXPORT_DIR        := $(GOX_DIR)/$(LIB_NAME)
 STATIC_LIB        := lib$(LIB_NAME)-$(LANGUAGE).a
 SHARED_LIB        := lib$(LIB_NAME)-$(LANGUAGE).so
@@ -42,7 +40,7 @@ SHARED_LIB_SONAME := lib$(LIB_NAME)-$(LANGUAGE).so.$(VERSION_MAJOR)
 $(LIB_NAME)-$(LANGUAGE): 
 	@$(MAKE) --no-print-directory go-export go-static-lib go-shared-lib
 
-go-export: $(PKG_GOX)
+go-export: $(PKG_GOXS)
 go-static-lib: $(STATIC_LIB)
 go-shared-lib: $(SHARED_LIB)
 
@@ -69,7 +67,7 @@ clean:
 
 install: $(LIB_NAME)-$(LANGUAGE)
 	install -d $(DESTDIR)/$(INCLUDE_DIR)/$(LANGUAGE)
-	cp -r $(EXPORT_DIR) $(DESTDIR)/$(INCLUDE_DIR)/$(LANGUAGE)
+	cp -a $(EXPORT_DIR)/* $(DESTDIR)/$(INCLUDE_DIR)/$(LANGUAGE)
 	install -d $(DESTDIR)/$(LIB_DIR)/$(TARGET_TRIPLE)
 	install -m 644 $(STATIC_LIB) $(DESTDIR)/$(LIB_DIR)/$(TARGET_TRIPLE)
 	install -m 755 $(SHARED_LIB_FULL) $(DESTDIR)/$(LIB_DIR)/$(TARGET_TRIPLE)
